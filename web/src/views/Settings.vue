@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref, watch, watchEffect } from 'vue'
+import api from '@/api'
 import ConfirmModal from '@/components/ConfirmModal.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
@@ -9,7 +10,6 @@ import BaseSwitch from '@/components/ui/BaseSwitch.vue'
 import { useAccountStore } from '@/stores/account'
 import { useFarmStore } from '@/stores/farm'
 import { useSettingStore } from '@/stores/setting'
-import api from '@/api'
 
 const settingStore = useSettingStore()
 const accountStore = useAccountStore()
@@ -218,11 +218,45 @@ const channelOptions = [
   { label: 'WxPusher', value: 'wxpusher' },
 ]
 
+const CHANNEL_DOCS: Record<string, string> = {
+  webhook: '',
+  qmsg: 'https://qmsg.zendee.cn/',
+  serverchan: 'https://sct.ftqq.com/',
+  pushplus: 'https://www.pushplus.plus/',
+  pushplushxtrip: 'https://pushplus.hxtrip.com/',
+  dingtalk: 'https://open.dingtalk.com/document/group/custom-robot-access',
+  wecom: 'https://guole.fun/posts/626/',
+  wecombot: 'https://developer.work.weixin.qq.com/document/path/91770',
+  bark: 'https://github.com/Finb/Bark',
+  gocqhttp: 'https://docs.go-cqhttp.org/api/',
+  onebot: 'https://docs.go-cqhttp.org/api/',
+  atri: 'https://blog.tianli0.top/',
+  pushdeer: 'https://www.pushdeer.com/',
+  igot: 'https://push.hellyw.com/',
+  telegram: 'https://core.telegram.org/bots',
+  feishu: 'https://www.feishu.cn/hc/zh-CN/articles/360024984973',
+  ifttt: 'https://ifttt.com/maker_webhooks',
+  discord: 'https://discord.com/developers/docs/resources/webhook#execute-webhook',
+  wxpusher: 'https://wxpusher.zjiecode.com/docs/#/',
+}
+
 const reloginUrlModeOptions = [
   { label: '不需要', value: 'none' },
   { label: 'QQ直链', value: 'qq_link' },
   { label: '二维码链接', value: 'qr_link' },
 ]
+
+const currentChannelDocUrl = computed(() => {
+  const key = String(localOffline.value.channel || '').trim().toLowerCase()
+  return CHANNEL_DOCS[key] || ''
+})
+
+function openChannelDocs() {
+  const url = currentChannelDocUrl.value
+  if (!url)
+    return
+  window.open(url, '_blank', 'noopener,noreferrer')
+}
 
 const preferredSeedOptions = computed(() => {
   const options = [{ label: '自动选择', value: 0 }]
@@ -390,7 +424,7 @@ async function handleSaveOffline() {
             />
             <div v-else class="flex flex-col gap-1">
               <span class="text-xs text-gray-500 dark:text-gray-400">策略选种预览</span>
-              <div class="flex h-9 items-center rounded-md border border-gray-200 bg-gray-50 px-3 text-sm text-gray-600 dark:border-gray-600 dark:bg-gray-700/50 dark:text-gray-300">
+              <div class="h-9 flex items-center border border-gray-200 rounded-md bg-gray-50 px-3 text-sm text-gray-600 dark:border-gray-600 dark:bg-gray-700/50 dark:text-gray-300">
                 {{ strategyPreviewLabel ?? '加载中...' }}
               </div>
             </div>
@@ -580,11 +614,23 @@ async function handleSaveOffline() {
         <!-- Offline Content -->
         <div class="flex-1 p-4 space-y-3">
           <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <BaseSelect
-              v-model="localOffline.channel"
-              label="推送渠道"
-              :options="channelOptions"
-            />
+            <div class="flex flex-col gap-1.5">
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-700 font-medium dark:text-gray-300">推送渠道</span>
+                <BaseButton
+                  variant="text"
+                  size="sm"
+                  :disabled="!currentChannelDocUrl"
+                  @click="openChannelDocs"
+                >
+                  官网
+                </BaseButton>
+              </div>
+              <BaseSelect
+                v-model="localOffline.channel"
+                :options="channelOptions"
+              />
+            </div>
             <BaseSelect
               v-model="localOffline.reloginUrlMode"
               label="重登录链接"

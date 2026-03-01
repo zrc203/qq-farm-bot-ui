@@ -71,7 +71,7 @@ export const useSettingStore = defineStore('setting', () => {
       token: '',
       title: '账号下线提醒',
       msg: '账号下线',
-      offlineDeleteSec: 120,
+      offlineDeleteSec: 1200000,
     },
   })
   const loading = ref(false)
@@ -99,7 +99,7 @@ export const useSettingStore = defineStore('setting', () => {
           token: '',
           title: '账号下线提醒',
           msg: '账号下线',
-          offlineDeleteSec: 120,
+          offlineDeleteSec: 1200000,
         }
       }
     }

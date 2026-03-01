@@ -7,7 +7,7 @@ const accountIdRef = useStorage('current_account_id', '')
 
 const api = axios.create({
   baseURL: '/',
-  timeout: 10000,
+  timeout: 20000,
 })
 
 api.interceptors.request.use((config) => {

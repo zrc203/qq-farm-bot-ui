@@ -22,7 +22,7 @@ const DEFAULT_OFFLINE_REMINDER = {
     token: '',
     title: '账号下线提醒',
     msg: '账号下线',
-    offlineDeleteSec: 120,
+    offlineDeleteSec: 1200000,
 };
 // ============ 全局配置 ============
 const DEFAULT_ACCOUNT_CONFIG = {

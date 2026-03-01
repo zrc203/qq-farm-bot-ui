@@ -82,7 +82,7 @@ const localOffline = ref({
   token: '',
   title: '',
   msg: '',
-  offlineDeleteSec: 120,
+  offlineDeleteSec: 1200000,
 })
 
 const passwordForm = ref({
@@ -668,7 +668,7 @@ async function handleSaveOffline() {
               label="离线删除账号 (秒)"
               type="number"
               min="1"
-              placeholder="默认 120"
+              placeholder="默认 1200000"
             />
           </div>
 

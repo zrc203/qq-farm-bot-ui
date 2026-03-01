@@ -975,8 +975,8 @@ async function runFarmOperation(opType) {
 
         if (landsToHarvest.length > 0) {
             try {
-                harvestReply = await harvest(status.harvestable);
-                log('收获', `收获完成 ${status.harvestable.length} 块土地`, {
+                harvestReply = await harvest(landsToHarvest);
+                log('收获', `收获完成 ${landsToHarvest.length} 块土地`, {
                     module: 'farm',
                     event: 'harvest_crop',
                     result: 'ok',

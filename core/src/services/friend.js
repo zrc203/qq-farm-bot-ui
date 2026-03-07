@@ -4,6 +4,7 @@
 
 const { CONFIG, PlantPhase, PHASE_NAMES } = require('../config/config');
 const { getPlantName, getPlantById, getSeedImageBySeedId } = require('../config/gameConfig');
+const { parentPort } = require('node:worker_threads');
 const { isAutomationOn, getFriendQuietHours, getFriendBlacklist } = require('../models/store');
 const { sendMsgAsync, getUserState, networkEvents } = require('../utils/network');
 const { types } = require('../utils/proto');
@@ -64,9 +65,65 @@ function inFriendQuietHours(now = new Date()) {
     return cur >= start || cur < end; // 跨天时段
 }
 
+function isEnterFarmBannedError(error) {
+    const message = String((error && error.message) || error || '');
+    if (!message) return false;
+    return message.includes('1002003');
+}
+
+function postToMaster(payload) {
+    try {
+        if (process.send) {
+            process.send(payload);
+            return true;
+        }
+        if (parentPort && typeof parentPort.postMessage === 'function') {
+            parentPort.postMessage(payload);
+            return true;
+        }
+    } catch {}
+    return false;
+}
+
+function addFriendToBlacklist(friendGid, friendName, reason = '') {
+    const gid = toNum(friendGid);
+    if (!gid) return false;
+    const currentList = getFriendBlacklist();
+    const current = Array.isArray(currentList) ? currentList : [];
+    if (current.includes(gid)) return false;
+
+    const sent = postToMaster({
+        type: 'friend_blacklist_add',
+        gid,
+        friendName: friendName || `GID:${gid}`,
+        reason: String(reason || ''),
+    });
+    if (!sent) return false;
+
+    logWarn('好友', `检测到封禁好友，已自动加入黑名单: ${friendName || `GID:${gid}`}`, {
+        module: 'friend',
+        event: '加黑名单',
+        result: 'auto_blocked',
+        friendName: friendName || `GID:${gid}`,
+        friendGid: gid,
+        reason: String(reason || ''),
+    });
+    return true;
+}
+
 // ============ 好友 API ============
 
 async function getAllFriends() {
+    const isQQ = CONFIG.platform === 'qq';
+    if (isQQ) {
+        const syncReq = types.SyncAllRequest || types.SyncAllFriendsRequest;
+        const syncRep = types.SyncAllReply || types.SyncAllFriendsReply;
+        if (!syncReq || !syncRep) throw new Error('SyncAll 接口类型未加载');
+        const body = syncReq.encode(syncReq.create({ open_ids: [] })).finish();
+        const { body: replyBody } = await sendMsgAsync('gamepb.friendpb.FriendService', 'SyncAll', body);
+        return syncRep.decode(replyBody);
+    }
+
     const body = types.GetAllFriendsRequest.encode(types.GetAllFriendsRequest.create({})).finish();
     const { body: replyBody } = await sendMsgAsync('gamepb.friendpb.FriendService', 'GetAll', body);
     return types.GetAllFriendsReply.decode(replyBody);
@@ -573,6 +630,10 @@ async function doFriendOperation(friendGid, opType) {
     try {
         enterReply = await enterFriendFarm(gid);
     } catch (e) {
+        if (isEnterFarmBannedError(e)) {
+            addFriendToBlacklist(gid, `GID:${gid}`, e && e.message ? e.message : '');
+            return { ok: true, opType, count: 0, message: '好友已自动加入黑名单' };
+        }
         return { ok: false, message: `进入好友农场失败: ${e.message}`, opType };
     }
 
@@ -686,6 +747,10 @@ async function visitFriend(friend, totalActions, myGid) {
     try {
         enterReply = await enterFriendFarm(gid);
     } catch (e) {
+        if (isEnterFarmBannedError(e)) {
+            addFriendToBlacklist(gid, name, e && e.message ? e.message : '');
+            return;
+        }
         logWarn('好友', `进入 ${name} 农场失败: ${e.message}`, {
             module: 'friend', event: 'enter_farm', result: 'error', friendName: name, friendGid: gid
         });
@@ -843,6 +908,7 @@ async function checkFriends() {
             if (gid === state.gid) continue;
             if (visitedGids.has(gid)) continue;
             if (blacklist.has(gid)) continue;
+            if (String(f.name || '').trim() === '小小农夫' || String(f.remark || '').trim() === '小小农夫') continue;
             
             const name = f.remark || f.name || `GID:${gid}`;
             const p = f.plant;

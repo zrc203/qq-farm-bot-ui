@@ -15,6 +15,7 @@ const PUSHOO_CHANNELS = new Set([
     'pushdeer', 'igot', 'telegram', 'feishu', 'ifttt', 'wecombot',
     'discord', 'wxpusher',
 ]);
+const INTERVAL_MAX_SEC = 86400;
 const DEFAULT_OFFLINE_REMINDER = {
     channel: 'webhook',
     reloginUrlMode: 'none',
@@ -24,10 +25,18 @@ const DEFAULT_OFFLINE_REMINDER = {
     msg: '账号下线',
     offlineDeleteSec: 1200000,
 };
+
+const DEFAULT_QR_LOGIN = {
+    apiDomain: 'q.qq.com',
+};
 // ============ 全局配置 ============
 const DEFAULT_ACCOUNT_CONFIG = {
     automation: {
         farm: true,
+        farm_manage: true, // 农场打理总开关（浇水/除草/除虫）
+        farm_water: true, // 自动浇水
+        farm_weed: true, // 自动除草
+        farm_bug: true, // 自动除虫
         farm_push: true,   // 收到 LandsNotify 推送时是否立即触发巡田
         land_upgrade: true, // 是否自动升级土地
         friend: true,       // 好友互动总开关
@@ -81,6 +90,7 @@ const globalConfig = {
         theme: 'dark',
     },
     offlineReminder: { ...DEFAULT_OFFLINE_REMINDER },
+    qrLogin: { ...DEFAULT_QR_LOGIN },
     adminPasswordHash: '',
 };
 
@@ -106,7 +116,7 @@ function normalizeOfflineReminder(input) {
     const rawReloginUrlMode = (src.reloginUrlMode !== undefined && src.reloginUrlMode !== null)
         ? String(src.reloginUrlMode).trim().toLowerCase()
         : DEFAULT_OFFLINE_REMINDER.reloginUrlMode;
-    const reloginUrlMode = new Set(['none', 'qq_link', 'qr_link']).has(rawReloginUrlMode)
+    const reloginUrlMode = new Set(['none', 'qq_link', 'qr_code','all']).has(rawReloginUrlMode)
         ? rawReloginUrlMode
         : DEFAULT_OFFLINE_REMINDER.reloginUrlMode;
     const token = (src.token !== undefined && src.token !== null)
@@ -129,6 +139,27 @@ function normalizeOfflineReminder(input) {
     };
 }
 
+
+function normalizeApiDomain(input, fallback = DEFAULT_QR_LOGIN.apiDomain) {
+    const raw = String(input || '').trim();
+    if (!raw) return fallback;
+    const normalized = /^https?:\/\//i.test(raw) ? raw : (`https://${  raw}`);
+    try {
+        const parsed = new URL(normalized);
+        const host = String(parsed.host || '').trim();
+        return host || fallback;
+    } catch {
+        return fallback;
+    }
+}
+
+
+function normalizeQrLoginConfig(input) {
+    const src = (input && typeof input === 'object') ? input : {};
+    return {
+        apiDomain: normalizeApiDomain(src.apiDomain, DEFAULT_QR_LOGIN.apiDomain),
+    };
+}
 function cloneAccountConfig(base = DEFAULT_ACCOUNT_CONFIG) {
     const srcAutomation = (base && base.automation && typeof base.automation === 'object')
         ? base.automation
@@ -283,6 +314,7 @@ function loadGlobalConfig() {
             const theme = String(globalConfig.ui.theme || '').toLowerCase();
             globalConfig.ui.theme = theme === 'light' ? 'light' : 'dark';
             globalConfig.offlineReminder = normalizeOfflineReminder(data.offlineReminder);
+            globalConfig.qrLogin = normalizeQrLoginConfig(data.qrLogin);
             if (typeof data.adminPasswordHash === 'string') {
                 globalConfig.adminPasswordHash = data.adminPasswordHash;
             }
@@ -355,6 +387,7 @@ function getConfigSnapshot(accountId) {
         friendQuietHours: { ...cfg.friendQuietHours },
         friendBlacklist: [...(cfg.friendBlacklist || [])],
         ui: { ...globalConfig.ui },
+        qrLogin: normalizeQrLoginConfig(globalConfig.qrLogin),
     };
 }
 
@@ -441,7 +474,11 @@ function getIntervals(accountId) {
 
 function normalizeIntervals(intervals) {
     const src = (intervals && typeof intervals === 'object') ? intervals : {};
-    const toSec = (v, d) => Math.max(1, Number.parseInt(v, 10) || d);
+    const toSec = (v, d) => {
+        const n = Number.parseInt(v, 10);
+        const base = Number.isFinite(n) ? n : d;
+        return Math.max(1, Math.min(INTERVAL_MAX_SEC, base));
+    };
     const farm = toSec(src.farm, 2);
     const friend = toSec(src.friend, 10);
 
@@ -510,6 +547,17 @@ function setOfflineReminder(cfg) {
     return getOfflineReminder();
 }
 
+
+function getQrLoginConfig() {
+    return normalizeQrLoginConfig(globalConfig.qrLogin);
+}
+
+function setQrLoginConfig(cfg) {
+    const current = normalizeQrLoginConfig(globalConfig.qrLogin);
+    globalConfig.qrLogin = normalizeQrLoginConfig({ ...current, ...(cfg || {}) });
+    saveGlobalConfig();
+    return getQrLoginConfig();
+}
 // ============ 账号管理 ============
 function loadAccounts() {
     ensureDataDir();
@@ -595,9 +643,12 @@ module.exports = {
     setUITheme,
     getOfflineReminder,
     setOfflineReminder,
+    getQrLoginConfig,
+    setQrLoginConfig,
     getAccounts,
     addOrUpdateAccount,
     deleteAccount,
     getAdminPasswordHash,
     setAdminPasswordHash,
 };
+

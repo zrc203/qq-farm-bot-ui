@@ -59,6 +59,7 @@ const DEFAULT_ACCOUNT_CONFIG = {
         farm_weed: true, // 自动除草
         farm_bug: true, // 自动除虫
         farm_push: true,   // 收到 LandsNotify 推送时是否立即触发巡田
+        farm_harvest_after_stolen: false, // 等偷再收：成熟后等好友偷过至少一次再收获
         land_upgrade: true, // 是否自动升级土地
         friend: true,       // 好友互动总开关
         friend_help_exp_limit: true, // 帮忙经验达上限后自动停止帮忙

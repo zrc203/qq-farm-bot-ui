@@ -1352,6 +1352,27 @@ async function runFarmOperation(opType, options = {}) {
     const lands = landsReply.lands;
     const status = analyzeLands(lands);
 
+    // 等偷再收：仅在自动模式且开关开启时过滤，对关闭状态零开销
+    if (isAutomated && isAutomationOn('farm_harvest_after_stolen') && status.harvestable.length > 0) {
+        const landsMap = buildLandMap(lands);
+        const waitingForSteal = [];
+        const readyToHarvest = [];
+        for (const landId of status.harvestable) {
+            const land = landsMap.get(landId);
+            const stoleNum = toNum(land && land.plant && land.plant.stole_num);
+            if (stoleNum > 0) {
+                readyToHarvest.push(landId);
+            } else {
+                waitingForSteal.push(landId);
+            }
+        }
+        status.harvestable = readyToHarvest;
+        status.harvestableInfo = status.harvestableInfo.filter(info => readyToHarvest.includes(info.landId));
+        if (waitingForSteal.length > 0) {
+            log('收获', `等偷再收：${waitingForSteal.length} 块等待好友偷取`);
+        }
+    }
+
     // 摘要
     const statusParts = [];
     if (status.harvestable.length) statusParts.push(`收:${status.harvestable.length}`);

@@ -573,6 +573,9 @@ async function startBot(config) {
         if (getAutomation().fertilizer_gift) {
             await openFertilizerGiftPacksSilently().catch(() => 0);
         }
+        if (getAutomation().sell) {
+            await sellAllFruits().catch(() => 0);
+        }
         startFarmCheckLoop({ externalScheduler: true });
         startFriendCheckLoop({ externalScheduler: true });
         startUnifiedScheduler();

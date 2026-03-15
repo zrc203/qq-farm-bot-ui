@@ -48,6 +48,11 @@ export interface IntervalsConfig {
   friendMax?: number
 }
 
+export interface FriendBlockLevelConfig {
+  enabled?: boolean
+  Level?: number
+}
+
 export interface FriendQuietHoursConfig {
   enabled?: boolean
   start?: string
@@ -102,6 +107,7 @@ export interface SettingsState {
   preferredSeedId: number
   bagSeedPriority: number[]
   intervals: IntervalsConfig
+  friendBlockLevel: FriendBlockLevelConfig
   friendQuietHours: FriendQuietHoursConfig
   automation: AutomationConfig
   ui: UIConfig
@@ -116,6 +122,7 @@ export const useSettingStore = defineStore('setting', () => {
     preferredSeedId: 0,
     bagSeedPriority: [],
     intervals: {},
+    friendBlockLevel: { enabled: true, Level: 1 },
     friendQuietHours: { enabled: false, start: '23:00', end: '07:00' },
     automation: {},
     ui: {},
@@ -136,7 +143,7 @@ export const useSettingStore = defineStore('setting', () => {
     },
     runtimeClient: {
       serverUrl: 'wss://gate-obt.nqf.qq.com/prod/ws',
-      clientVersion: '1.6.2.18_20260227',
+      clientVersion: '1.7.0.6_20260313',
       os: 'iOS',
       device_info: {
         sys_software: 'iOS 26.2.1',
@@ -162,6 +169,7 @@ export const useSettingStore = defineStore('setting', () => {
         settings.value.preferredSeedId = d.preferredSeed || 0
         settings.value.bagSeedPriority = Array.isArray(d.bagSeedPriority) ? d.bagSeedPriority : []
         settings.value.intervals = d.intervals || {}
+        settings.value.friendBlockLevel = { enabled: true, Level: 1, ...(d.friendBlockLevel || {}) }
         settings.value.friendQuietHours = d.friendQuietHours || { enabled: false, start: '23:00', end: '07:00' }
         settings.value.automation = d.automation || {}
         settings.value.ui = d.ui || {}
@@ -183,7 +191,7 @@ export const useSettingStore = defineStore('setting', () => {
         }
         settings.value.runtimeClient = d.runtimeClient || {
           serverUrl: 'wss://gate-obt.nqf.qq.com/prod/ws',
-          clientVersion: '1.6.2.18_20260227',
+          clientVersion: '1.7.0.6_20260313',
           os: 'iOS',
           device_info: {
             sys_software: 'iOS 26.2.1',
@@ -210,6 +218,7 @@ export const useSettingStore = defineStore('setting', () => {
         preferredSeedId: newSettings.preferredSeedId,
         bagSeedPriority: newSettings.bagSeedPriority,
         intervals: newSettings.intervals,
+        friendBlockLevel: newSettings.friendBlockLevel,
         friendQuietHours: newSettings.friendQuietHours,
       }
 
